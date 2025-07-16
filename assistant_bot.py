@@ -875,17 +875,33 @@ AVAILABLE_COMMANDS = [
 ]
 
 # Функція для пропозиції команди на основі введення користувача 
-def suggest_command(raw_input: str):
-    parts = raw_input.strip().split()
-    joined = "".join(parts).lower()
-    first = parts[0].lower() if parts else ""
+def suggest_command(raw_input: str, available_commands=None):
+    if available_commands is None:
+        available_commands = AVAILABLE_COMMANDS
 
-    candidates = set([first, joined])
-    matches = []
+    parts = raw_input.strip().lower().split()
+    joined = "".join(parts)
+    
+    # Створюємо набір кандидатів на основі введення
+    candidates = set()
+    if parts:
+        candidates.add(parts[0])           # тільки перше слово
+    candidates.add(joined)                 # все разом
+    candidates.add(" ".join(parts))        # все разом з пробілами
+    candidates.add(raw_input.lower())      # все разом в нижньому регістрі
+
+    # Перевіряємо на точні збіги
     for candidate in candidates:
-        matches += difflib.get_close_matches(candidate, AVAILABLE_COMMANDS, n=1, cutoff=0.6)
+        match = difflib.get_close_matches(candidate, available_commands, n=1, cutoff=0.6)
+        if match:
+            return match[0]
 
-    return matches[0] if matches else None
+    # Якщо не знайдено точного збігу, перевіряємо часткові збіги
+    for command in available_commands:
+        if joined.startswith(command[:4]):  # часткове співпадіння
+            return command
+
+    return None
     
 
 # Головна функція для запуску бота
@@ -1043,12 +1059,16 @@ def main():
             elif command == "help":
                 print_available_commands()
                 
-            else:
+            elif command not in AVAILABLE_COMMANDS:
                 suggested = suggest_command(user_input)
                 if suggested:
-                    console.print(f"Did you mean: [bold yellow]{suggested}[/]?", style="red")  
+                    console.print(f"Did you mean: [bold yellow]{suggested}[/]?", style="red")
+                    console.print(("Type 'help' to see available commands."), style="green")
                 else:
                     console.print(f"Unknown command '{command}'.", style="red")
+                    console.print(("Type 'help' to see available commands."), style="green")
+            
+            else:
                 print_available_commands()
                 
     except KeyboardInterrupt: # Збереження без явного виходу з програми (exit, close)
